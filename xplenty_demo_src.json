@@ -1,0 +1,270 @@
+{
+    "components": [
+        {
+            "database_source_component": {
+                "id": "component-844493",
+                "name": "heroku_prospect",
+                "alias": "heroku_prospect",
+                "xy": [
+                    476,
+                    84
+                ],
+                "connection": {
+                    "id": 16823,
+                    "type": "herokupostgres",
+                    "name": "hztl-internal-db"
+                },
+                "schema": {
+                    "valid": true,
+                    "fields": [
+                        {
+                            "name": "ncpc__contact__c",
+                            "alias": "ncpc__contact__c",
+                            "data_type": "string"
+                        },
+                        {
+                            "name": "ncpc__related_subscription_interest__c",
+                            "alias": "ncpc__related_subscription_interest__c",
+                            "data_type": "string"
+                        }
+                    ]
+                },
+                "database_connection_id": "16823",
+                "access_mode": "table",
+                "schema_name": "horizontalpardot",
+                "table_name": "ncpc__pc_subscription__c",
+                "where_clause": "",
+                "query": "",
+                "split_by_column_name": "",
+                "parallel": 1,
+                "before_action": "none"
+            }
+        },
+        {
+            "select_component": {
+                "id": "component-6c6cf2",
+                "name": "post_request",
+                "alias": "post_request",
+                "xy": [
+                    476,
+                    504
+                ],
+                "fields": [
+                    {
+                        "name": "Curl('https://pi.demo.pardot.com/api/prospect/version/4/do/batchUpdate','POST', headers, post_data)",
+                        "projected_name": "post_response"
+                    }
+                ]
+            }
+        },
+        {
+            "database_destination_component": {
+                "id": "component-b7c817",
+                "name": "database_4",
+                "alias": "database_4",
+                "xy": [
+                    476,
+                    840
+                ],
+                "connection": {
+                    "id": 16823,
+                    "type": "herokupostgres",
+                    "name": "hztl-internal-db"
+                },
+                "schema": {
+                    "valid": true,
+                    "fields": []
+                },
+                "database_connection_id": "16823",
+                "schema_name": "hipardot",
+                "table_name": "post_log_status",
+                "create_table": true,
+                "add_columns": true,
+                "column_mappings": [
+                    {
+                        "field_name": "post_status",
+                        "column_name": "post_status",
+                        "is_merge_key": false
+                    },
+                    {
+                        "field_name": "last_run",
+                        "column_name": "last_run",
+                        "is_merge_key": false
+                    },
+                    {
+                        "field_name": "job_id",
+                        "column_name": "job_id",
+                        "is_merge_key": false
+                    }
+                ],
+                "operation_type": "append",
+                "batch_size": 1000,
+                "parallel": 1,
+                "identity_insert_sql_server": false,
+                "single_transaction_per_batch": false,
+                "split_by_field": "post_status"
+            }
+        },
+        {
+            "select_component": {
+                "id": "component-4ae0a1",
+                "name": "prepare_request",
+                "alias": "prepare_request",
+                "xy": [
+                    476,
+                    392
+                ],
+                "fields": [
+                    {
+                        "name": "'{\"Content-Type\": \"application/json\", \"Authorization\": \"Pardot user_key=$user_key, api_key=$api_key\"}'",
+                        "projected_name": "headers"
+                    },
+                    {
+                        "name": "ToJson(SPRINTF('{\"prospects\":[{\"ncpc_subscriptions\":\"%s\",\"id\":\"%s\"}]}', subscriptions_per_id, ncpc__contact__c))",
+                        "projected_name": "post_data"
+                    }
+                ]
+            }
+        },
+        {
+            "select_component": {
+                "id": "component-219c34",
+                "name": "post_status",
+                "alias": "post_status",
+                "xy": [
+                    476,
+                    672
+                ],
+                "fields": [
+                    {
+                        "name": "post_response#'status'",
+                        "projected_name": "post_status"
+                    },
+                    {
+                        "name": "'$_PACKAGE_LAST_SUCCESSFUL_JOB_SUBMISSION_TIMESTAMP'",
+                        "projected_name": "last_run"
+                    },
+                    {
+                        "name": "'$_JOB_ID'",
+                        "projected_name": "job_id"
+                    }
+                ]
+            }
+        },
+        {
+            "aggregate_component": {
+                "id": "component-27555d",
+                "name": "aggregate_2",
+                "alias": "aggregate_2",
+                "xy": [
+                    476,
+                    224
+                ],
+                "grouped_fields": [
+                    {
+                        "field_name": "ncpc__contact__c"
+                    }
+                ],
+                "aggregated_fields": [
+                    {
+                        "field_name": "ncpc__related_subscription",
+                        "alias": "subscriptions_per_id",
+                        "function_name": "collect",
+                        "projected_field_name": "ncpc__contact__c"
+                    }
+                ],
+                "grouping_type": "group_by"
+            }
+        },
+        {
+            "select_component": {
+                "id": "component-4678aa",
+                "name": "select_1",
+                "alias": "select_1",
+                "xy": [
+                    644,
+                    308
+                ],
+                "fields": [
+                    {
+                        "name": "(chararray)ncpc__contact__c",
+                        "projected_name": "ncpc__contact__c"
+                    },
+                    {
+                        "name": "BagToString(subscriptions_per_id, ',')",
+                        "projected_name": "subscriptions_per_id"
+                    }
+                ]
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "edge-2a5aa9",
+            "label": "edge-2a5aa9",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-4ae0a1",
+            "target": "component-6c6cf2"
+        },
+        {
+            "id": "edge-b9ce9e",
+            "label": "edge-b9ce9e",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-6c6cf2",
+            "target": "component-219c34"
+        },
+        {
+            "id": "edge-10e4ba",
+            "label": "edge-10e4ba",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-219c34",
+            "target": "component-b7c817"
+        },
+        {
+            "id": "edge-954e90",
+            "label": "edge-954e90",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-844493",
+            "target": "component-27555d"
+        },
+        {
+            "id": "edge-081394",
+            "label": "edge-081394",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-27555d",
+            "target": "component-4678aa"
+        },
+        {
+            "id": "edge-4530eb",
+            "label": "edge-4530eb",
+            "order": 0,
+            "source_index": 0,
+            "source": "component-4678aa",
+            "target": "component-4ae0a1"
+        }
+    ],
+    "variables": {
+        "full_load": "0",
+        "last_updated_at": "last_updated_at = CASE WHEN (COALESCE($_PACKAGE_LAST_SUCCESSFUL_JOB_SUBMISSION_TIMESTAMP,'')=='' OR $full_load==1) THEN '1900-01-01T00:00:00Z' ELSE $_PACKAGE_LAST_SUCCESSFUL_JOB_SUBMISSION_TIMESTAMP END",
+        "password": "'xyz'",
+        "email": "'grass@coco.com'",
+        "user_key": "'7ee'",
+        "api_key": "ddd",
+        "client_id": "'cccc'",
+        "client_secret": "'dddd'",
+        "grant_type": "'password'",
+        "username": "'grass@coco.com'"
+    },
+    "metadata": {
+        "name": "[progressing]Postgres {subscription} -> Pardot",
+        "description": "Change POST endpoint to subscription",
+        "flow_type": "dataflow",
+        "version": "1.84",
+        "version_description": ""
+    }
+}
